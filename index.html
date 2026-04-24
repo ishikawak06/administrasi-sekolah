@@ -674,7 +674,7 @@ async function doLogin() {
   if (id === 'admin' && pw === defaultPwAdmin) {
     peran = 'manajemen';
     valid = true;
-  } else if (id.startsWith('MUADDIB-')) {
+  } else if (id.startsWith('MUADDIB-') || id.startsWith('MUADIBBAH-')) {
     const guruList = JSON.parse(localStorage.getItem('data_guru') || '[]');
     const g = guruList.find(x => x.id === id);
     if (g && pw === (g.password || defaultPwGuru)) {
@@ -1337,6 +1337,12 @@ function formTambahGuru() {
     <div class="panel" style="margin-bottom:16px">
       <div class="panel-title" style="margin-bottom:16px">➕ Tambah Guru Baru</div>
       <div class="form-group"><label>Nama Lengkap</label><input id="ng-nama" placeholder="Ust. Nama Lengkap, S.Pd"></div>
+      <div class="form-group"><label>Jenis Kelamin</label>
+        <select id="ng-gender">
+          <option value="L">Laki-laki (Muaddib)</option>
+          <option value="P">Perempuan (Muadibbah)</option>
+        </select>
+      </div>
       <div class="form-group"><label>Kelas</label><input id="ng-kelas" placeholder="7A"></div>
       <div class="form-group"><label>Mata Pelajaran</label><input id="ng-mapel" placeholder="Matematika"></div>
       <button class="btn-simpan" onclick="simpanGuru()">💾 Simpan</button>
@@ -1346,14 +1352,16 @@ function formTambahGuru() {
 
 async function simpanGuru() {
   const nama = document.getElementById('ng-nama').value.trim();
+  const gender = document.getElementById('ng-gender').value;
   const kelas = document.getElementById('ng-kelas').value.trim();
   const mapel = document.getElementById('ng-mapel').value.trim();
   if (!nama||!kelas||!mapel) { showToast('Semua kolom harus diisi.','error'); return; }
   
   const guru = JSON.parse(localStorage.getItem('data_guru') || '[]');
   const singkat = nama.split(' ').slice(-1)[0].toUpperCase().substring(0,8);
-  const id = `MUADDIB-${singkat}-${String(guru.length+1).padStart(3,'0')}`;
-  guru.push({id, nama, kelas, mapel, password: ""}); // Default password kosong (akan dihandle di login)
+  const prefix = gender === 'P' ? 'MUADIBBAH' : 'MUADDIB';
+  const id = `${prefix}-${singkat}-${String(guru.length+1).padStart(3,'0')}`;
+  guru.push({id, nama, gender, kelas, mapel, password: ""}); // Default password kosong (akan dihandle di login)
   localStorage.setItem('data_guru', JSON.stringify(guru));
   
   tampilkanLoading("Menyimpan ke Cloud...");
@@ -1380,10 +1388,11 @@ async function hapusGuru(id) {
 
 function cetakQRGuru(id, nama, mapel, kelas) {
     const printArea = document.createElement('div');
+    const badge = id.startsWith('MUADIBBAH') ? 'Muadibbah' : 'Muaddib';
     printArea.className = 'qr-card';
     printArea.style.zIndex = '9999';
     printArea.innerHTML = `
-        <h3>QR Code Absensi Muaddib</h3>
+        <h3>QR Code Absensi ${badge}</h3>
         <p style="font-size:1.3rem;font-weight:700;color:var(--hijau-tua);margin-top:10px">${nama}</p>
         <p>${mapel} · Kelas ${kelas}</p>
         <div id="print-qr-output" style="margin:24px auto;width:200px;height:200px;"></div>
@@ -1741,7 +1750,7 @@ function renderScanKehadiran(content) {
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--hijau-terang)">
         <p style="font-size:.8rem;color:var(--teks-sekunder);margin-bottom:8px">🔤 Input Manual Kode ID (fallback):</p>
         <div style="display:flex;gap:8px;justify-content:center">
-          <input id="manual-qr" placeholder="MUADDIB-... / SANTRI-..." style="padding:8px 12px;border:2px solid #e0ede6;border-radius:8px;font-size:.85rem;width:260px;outline:none;color:var(--teks-utama)">
+          <input id="manual-qr" placeholder="MUADDIB-... / MUADIBBAH-... / SANTRI-..." style="padding:8px 12px;border:2px solid #e0ede6;border-radius:8px;font-size:.85rem;width:260px;outline:none;color:var(--teks-utama)">
           <button class="btn-scan-start" onclick="prosesQRManual()">Proses</button>
         </div>
       </div>`:''}
@@ -1765,7 +1774,7 @@ function renderIDDigital(content) {
       <img src="https://raw.githubusercontent.com/ishikawak06/administrasi-sekolah/6d4ca4f2f24656a40e584f13a9d60e481b926355/LOGO%20RQ.png" class="id-logo" alt="Logo">
       <h3>${g?g.nama:'—'}</h3>
       <p>${g?g.mapel:'—'} · Kelas ${g?g.kelas:'—'}</p>
-      <div class="id-badge">MUADDIB</div>
+      <div class="id-badge">${g && g.id && g.id.startsWith('MUADIBBAH') ? 'MUADIBBAH' : 'MUADDIB'}</div>
       <div class="id-qr" id="id-qr-mini"></div>
       <p style="font-size:.72rem;opacity:.7;margin-top:8px">${g?g.id:'—'}</p>
     </div>
