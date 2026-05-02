@@ -2248,11 +2248,13 @@
         </div>
 
         <!-- ======= HALAMAN ADMIN: PENGATURAN ======= -->
+        <!-- ======= HALAMAN ADMIN: PENGATURAN ======= -->
         <div class="halaman" id="hal-pengaturan">
           <div class="page-header">
             <h2 class="page-title">⚙️ Pengaturan Sistem</h2>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" class="grid-2-col">
+
             <div class="kartu">
               <div class="kartu-header"><span class="kartu-judul">🏫 Profil Madrasah</span></div>
               <div class="kartu-body">
@@ -2264,23 +2266,41 @@
                   <label class="form-label">Tahun Ajaran</label>
                   <input type="text" class="form-input" id="set-tahun-ajaran">
                 </div>
-                <div class="form-full">
-                  <label class="form-label">Jam Masuk (HH:MM)</label>
-                  <input type="time" class="form-input" id="set-jam-masuk">
+
+                <div class="form-row">
+                  <div>
+                    <label class="form-label">Jam Masuk</label>
+                    <input type="time" class="form-input" id="set-jam-masuk">
+                  </div>
+                  <div>
+                    <label class="form-label">Jam Pulang</label>
+                    <input type="time" class="form-input" id="set-jam-pulang">
+                  </div>
                 </div>
-                <div class="form-full">
-                  <label class="form-label">Jam Pulang (HH:MM)</label>
-                  <input type="time" class="form-input" id="set-jam-pulang">
+
+                <!-- TAMBAHAN: Pengaturan Hari Libur -->
+                <div class="form-full" style="margin-top: 16px;">
+                  <label class="form-label">Hari Libur Mingguan</label>
+                  <select class="form-select" id="set-hari-libur">
+                    <option value="Minggu">Minggu</option>
+                    <option value="Jumat">Jumat</option>
+                    <option value="Sabtu,Minggu">Sabtu & Minggu</option>
+                    <option value="Tidak Ada">Tidak Ada Libur</option>
+                  </select>
                 </div>
-                <div class="toggle-wrap">
+
+                <div class="toggle-wrap" style="margin-top: 16px;">
                   <div class="toggle-switch aktif" id="toggle-manual-qr" onclick="toggleSwitch(this)">
                     <div class="toggle-thumb"></div>
                   </div>
                   <span class="toggle-label">Izinkan Input Manual ID</span>
                 </div>
-                <button class="btn-aksi btn-hijau" onclick="simpanPengaturan()">💾 Simpan Pengaturan</button>
+
+                <button class="btn-aksi btn-hijau" onclick="simpanPengaturan()"
+                  style="margin-top: 12px; width: 100%;">💾 Simpan Pengaturan</button>
               </div>
             </div>
+
             <div class="kartu">
               <div class="kartu-header"><span class="kartu-judul">🔐 Ubah Kata Sandi Default</span></div>
               <div class="kartu-body">
@@ -2296,12 +2316,15 @@
                   <label class="form-label">Password Default Murid</label>
                   <input type="password" class="form-input" id="pw-murid" placeholder="Password baru murid">
                 </div>
-                <button class="btn-aksi btn-emas" onclick="simpanPassword()" style="margin-bottom:12px;">🔑 Simpan
+                <button class="btn-aksi btn-emas" onclick="simpanPassword()" style="margin-bottom:12px; width: 100%;">🔑
+                  Simpan
                   Password</button>
                 <hr style="border:none;border-top:1px solid var(--abu-medium);margin:16px 0;">
-                <button class="btn-aksi btn-merah" onclick="resetData()">⚠️ Reset Semua Data</button>
+                <button class="btn-aksi btn-merah" onclick="resetData()" style="width: 100%;">⚠️ Reset Semua
+                  Data</button>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -2727,6 +2750,7 @@
         jamMasuk: '07:00',
         jamPulang: '13:00',
         izinManualQR: true,
+        hariLibur: 'Minggu', // TAMBAHAN: Hari libur default
         pwAdmin: 'khidmatumat2026',
         pwGuru: 'adabdulubaruilmu',
         pwMurid: 'murojaahtiadahenti'
@@ -3377,6 +3401,11 @@
       document.getElementById('set-tahun-ajaran').value = p.tahunAjaran || '';
       document.getElementById('set-jam-masuk').value = p.jamMasuk || '07:00';
       document.getElementById('set-jam-pulang').value = p.jamPulang || '13:00';
+
+      // TAMBAHAN: Load pengaturan hari libur ke dropdown
+      const setHariLibur = document.getElementById('set-hari-libur');
+      if (setHariLibur) setHariLibur.value = p.hariLibur || 'Minggu';
+
       const tog = document.getElementById('toggle-manual-qr');
       if (p.izinManualQR) tog.classList.add('aktif'); else tog.classList.remove('aktif');
     }
@@ -3386,6 +3415,11 @@
       appState.pengaturan.tahunAjaran = document.getElementById('set-tahun-ajaran').value;
       appState.pengaturan.jamMasuk = document.getElementById('set-jam-masuk').value;
       appState.pengaturan.jamPulang = document.getElementById('set-jam-pulang').value;
+
+      // TAMBAHAN: Simpan pengaturan hari libur dari dropdown
+      const setHariLibur = document.getElementById('set-hari-libur');
+      if (setHariLibur) appState.pengaturan.hariLibur = setHariLibur.value;
+
       appState.pengaturan.izinManualQR = document.getElementById('toggle-manual-qr').classList.contains('aktif');
       await supabaseSave();
       tampilToast('✅ Pengaturan berhasil disimpan dan tersinkronisasi!', 'sukses');
@@ -3585,6 +3619,16 @@
 
       const kh = appState.kehadiran.filter(k => k.userId === userAktif.id);
 
+      // TAMBAHAN: Fungsi untuk mengecek apakah hari ini adalah hari libur sesuai pengaturan
+      const liburSet = appState.pengaturan.hariLibur || 'Minggu';
+      const isHariLibur = (hariIndex) => {
+        if (liburSet === 'Tidak Ada') return false;
+        if (liburSet === 'Minggu' && hariIndex === 0) return true;
+        if (liburSet === 'Jumat' && hariIndex === 5) return true;
+        if (liburSet === 'Sabtu,Minggu' && (hariIndex === 6 || hariIndex === 0)) return true;
+        return false;
+      };
+
       for (let d = 1; d <= totalHari; d++) {
         const tgl = new Date(tahun, bulan, d);
         const tglStr = `${tahun}-${String(bulan + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -3592,15 +3636,21 @@
         const isToday = tgl.toDateString() === today.toDateString();
 
         let kelas = 'kal-hari';
-        if (hari === 0 || hari === 6) kelas += ' kal-libur';
-        else {
+
+        // Pengecekan hari libur dinamis
+        if (isHariLibur(hari)) {
+          kelas += ' kal-libur';
+        } else {
           const rec = kh.find(k => k.tanggal === tglStr);
           if (rec) {
             if (rec.status === 'hadir' || rec.status === 'terlambat') kelas += ' kal-hadir';
             else if (rec.status === 'absen') kelas += ' kal-absen';
             else if (rec.status === 'izin' || rec.status === 'sakit') kelas += ' kal-sakit';
-          } else if (tgl <= today) kelas += ' kal-absen';
-          else kelas += ' kal-libur';
+          } else if (tgl <= today) {
+            kelas += ' kal-absen';
+          } else {
+            kelas += ' kal-libur'; // Masa depan dianggap kosong/abu-abu
+          }
         }
         if (isToday) kelas += ' kal-today';
         html += `<div class="${kelas}" title="${tglStr}">${d}</div>`;
